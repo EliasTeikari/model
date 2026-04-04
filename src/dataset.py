@@ -84,16 +84,16 @@ def load_odir_dataset(data_dir):
     else:
         df = pd.read_csv(anno_file)
 
-    # Find image directory
+    # Find image directory (pick the subdirectory with the most files)
     img_dir = None
+    max_files = 0
     for d in os.listdir(data_dir):
         full_path = os.path.join(data_dir, d)
-        if os.path.isdir(full_path) and "image" in d.lower():
-            img_dir = full_path
-            break
-        if os.path.isdir(full_path) and "training" in d.lower():
-            img_dir = full_path
-            break
+        if os.path.isdir(full_path):
+            n_files = len(os.listdir(full_path))
+            if n_files > max_files:
+                max_files = n_files
+                img_dir = full_path
 
     if img_dir is None:
         # Images might be directly in data_dir
