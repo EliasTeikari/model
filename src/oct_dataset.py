@@ -48,18 +48,25 @@ def load_oct_dataset(data_dir):
     Returns:
         train_df, test_df — DataFrames with columns: image_path, label, label_name
     """
-    # Handle nested OCT2017 directory (kagglehub structure)
-    oct_subdir = os.path.join(data_dir, "OCT2017")
-    if os.path.isdir(oct_subdir) and os.path.isdir(os.path.join(oct_subdir, "train")):
-        data_dir = oct_subdir
+    # Find the directory containing train/ with class subfolders
+    # Handles varying nesting: data_dir/train/, data_dir/OCT2017/train/, etc.
+    train_dir = None
+    test_dir = None
 
-    # Verify expected structure
-    train_dir = os.path.join(data_dir, "train")
-    test_dir = os.path.join(data_dir, "test")
+    for root, dirs, files in os.walk(data_dir):
+        if "train" in dirs:
+            candidate = os.path.join(root, "train")
+            subdirs = set(os.listdir(candidate)) if os.path.isdir(candidate) else set()
+            if {"CNV", "DME", "DRUSEN", "NORMAL"}.issubset(subdirs):
+                train_dir = candidate
+                test_candidate = os.path.join(root, "test")
+                if os.path.isdir(test_candidate):
+                    test_dir = test_candidate
+                break
 
-    if not os.path.isdir(train_dir):
+    if train_dir is None:
         raise FileNotFoundError(
-            f"Expected train/ directory in {data_dir}. "
+            f"Could not find train/ directory with CNV/DME/DRUSEN/NORMAL subfolders in {data_dir}. "
             "Download the dataset: kagglehub.dataset_download('paultimothymooney/kermany2018')"
         )
 
@@ -80,7 +87,7 @@ def load_oct_dataset(data_dir):
         return pd.DataFrame(records)
 
     train_df = _load_split(train_dir)
-    test_df = _load_split(test_dir) if os.path.isdir(test_dir) else pd.DataFrame()
+    test_df = _load_split(test_dir) if test_dir and os.path.isdir(test_dir) else pd.DataFrame()
 
     print(f"Loaded OCT dataset — Train: {len(train_df)}, Test: {len(test_df)}")
     print(f"\nTrain class distribution:\n{train_df['label_name'].value_counts()}")
